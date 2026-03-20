@@ -153,44 +153,51 @@ export HADOOP_OPTS="-Djava.library.path=$HADOOP_HOME/lib/native"
     print("Environment configured.")
 
 def configure_hadoop():
-    step(7, "Writing Hadoop config files")
+    step(7, "Writing Hadoop config files using sudo tee")
     conf = "/opt/hadoop/etc/hadoop"
     nn = Path.home() / "hadoop_data/namenode"
     dn = Path.home() / "hadoop_data/datanode"
     nn.mkdir(parents=True, exist_ok=True)
     dn.mkdir(parents=True, exist_ok=True)
     replication = max(1, min(len(WORKERS) + 1, 3))
-    run(f"sudo chown -R {MASTER_USER}:{MASTER_USER} /opt/hadoop-{HADOOP_VERSION} /opt/hadoop")
-    core = f"""<?xml version=\"1.0\"?>
+
+    # Use sudo tee to write files — works regardless of directory ownership
+    import subprocess as sp
+
+    core = f"""<?xml version="1.0" encoding="UTF-8"?>
 <configuration>
   <property><name>fs.defaultFS</name><value>hdfs://{MASTER_IP}:9000</value></property>
   <property><name>hadoop.tmp.dir</name><value>/opt/hadoop/tmp</value></property>
 </configuration>"""
-    run(f"sudo bash -c \"echo \'{core}\' > {conf}/core-site.xml\"")
-    hdfs = f"""<?xml version=\"1.0\"?>
+    sp.run(f"echo '{core}' | sudo tee {conf}/core-site.xml > /dev/null", shell=True)
+
+    hdfs = f"""<?xml version="1.0" encoding="UTF-8"?>
 <configuration>
   <property><name>dfs.replication</name><value>{replication}</value></property>
   <property><name>dfs.namenode.name.dir</name><value>file://{nn}</value></property>
   <property><name>dfs.datanode.data.dir</name><value>file://{dn}</value></property>
 </configuration>"""
-    run(f"sudo bash -c \"echo \'{hdfs}\' > {conf}/hdfs-site.xml\"")
-    mapred = """<?xml version=\"1.0\"?>
+    sp.run(f"echo '{hdfs}' | sudo tee {conf}/hdfs-site.xml > /dev/null", shell=True)
+
+    mapred = """<?xml version="1.0" encoding="UTF-8"?>
 <configuration>
   <property><name>mapreduce.framework.name</name><value>yarn</value></property>
 </configuration>"""
-    run(f"sudo bash -c \"echo \'{mapred}\' > {conf}/mapred-site.xml\"")
-    yarn = f"""<?xml version=\"1.0\"?>
+    sp.run(f"echo '{mapred}' | sudo tee {conf}/mapred-site.xml > /dev/null", shell=True)
+
+    yarn = f"""<?xml version="1.0" encoding="UTF-8"?>
 <configuration>
   <property><name>yarn.nodemanager.aux-services</name><value>mapreduce_shuffle</value></property>
   <property><name>yarn.resourcemanager.hostname</name><value>{MASTER_IP}</value></property>
 </configuration>"""
-    run(f"sudo bash -c \"echo \'{yarn}\' > {conf}/yarn-site.xml\"")
-    workers_str = "\n".join([w["ip"] for w in WORKERS]) if WORKERS else "localhost"
-    run(f"sudo bash -c \"echo \'{workers_str}\' > {conf}/workers\"")
-    run("sudo mkdir -p /opt/hadoop/tmp && sudo chmod 777 /opt/hadoop/tmp")
-    run(f"sudo chown -R {MASTER_USER}:{MASTER_USER} /opt/hadoop-{HADOOP_VERSION} /opt/hadoop")
-    print("Config files written.")
+    sp.run(f"echo '{yarn}' | sudo tee {conf}/yarn-site.xml > /dev/null", shell=True)
 
+    workers_str = "\n".join([w["ip"] for w in WORKERS]) if WORKERS else "localhost"
+    sp.run(f"echo '{workers_str}' | sudo tee {conf}/workers > /dev/null", shell=True)
+
+    sp.run("sudo mkdir -p /opt/hadoop/tmp && sudo chmod 777 /opt/hadoop/tmp", shell=True)
+    sp.run(f"sudo chown -R {MASTER_USER}:{MASTER_USER} /opt/hadoop-{HADOOP_VERSION} /opt/hadoop", shell=True)
+    print("Config files written successfully.")
 def setup_ssh():
     step(8, "Setting up passwordless SSH on master")
     run("sudo apt-get install -y -qq openssh-server openssh-client")
