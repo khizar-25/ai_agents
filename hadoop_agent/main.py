@@ -234,6 +234,8 @@ export YARN_NODEMANAGER_USER={MASTER_USER}
 export JAVA_HOME={java_home}
 export HADOOP_HOME=/opt/hadoop
 export PATH=$PATH:/opt/hadoop/sbin:/opt/hadoop/bin
+mkdir -p /opt/hadoop-{HADOOP_VERSION}/logs
+sudo chown -R {MASTER_USER}:{MASTER_USER} /opt/hadoop-{HADOOP_VERSION}/logs
 {HADOOP_SBIN}/start-dfs.sh
 {HADOOP_SBIN}/start-yarn.sh
 """
