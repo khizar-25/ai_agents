@@ -222,9 +222,20 @@ def format_namenode():
     print("Formatted." if r.returncode == 0 else "WARNING: Format issues.")
 
 def start_hadoop():
-    step(10, "Starting Hadoop daemons - using full paths")
-    run(f"sudo {HADOOP_SBIN}/start-dfs.sh")
-    run(f"sudo {HADOOP_SBIN}/start-yarn.sh")
+    step(10, "Starting Hadoop daemons with required env vars")
+    # Set required user env vars for Hadoop daemons
+    env_prefix = (
+        f"export HDFS_NAMENODE_USER={MASTER_USER} && "
+        f"export HDFS_DATANODE_USER={MASTER_USER} && "
+        f"export HDFS_SECONDARYNAMENODE_USER={MASTER_USER} && "
+        f"export YARN_RESOURCEMANAGER_USER={MASTER_USER} && "
+        f"export YARN_NODEMANAGER_USER={MASTER_USER} && "
+        f"export JAVA_HOME=$(dirname $(dirname $(readlink -f $(which java)))) && "
+        f"export HADOOP_HOME=/opt/hadoop && "
+        f"export PATH=$PATH:/opt/hadoop/sbin:/opt/hadoop/bin"
+    )
+    run(f"bash -c '{env_prefix} && {HADOOP_SBIN}/start-dfs.sh'")
+    run(f"bash -c '{env_prefix} && {HADOOP_SBIN}/start-yarn.sh'")
     time.sleep(6)
 
 def verify():
