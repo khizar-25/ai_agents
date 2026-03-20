@@ -223,19 +223,26 @@ def format_namenode():
 
 def start_hadoop():
     step(10, "Starting Hadoop daemons with required env vars")
-    # Set required user env vars for Hadoop daemons
-    env_prefix = (
-        f"export HDFS_NAMENODE_USER={MASTER_USER} && "
-        f"export HDFS_DATANODE_USER={MASTER_USER} && "
-        f"export HDFS_SECONDARYNAMENODE_USER={MASTER_USER} && "
-        f"export YARN_RESOURCEMANAGER_USER={MASTER_USER} && "
-        f"export YARN_NODEMANAGER_USER={MASTER_USER} && "
-        f"export JAVA_HOME=$(dirname $(dirname $(readlink -f $(which java)))) && "
-        f"export HADOOP_HOME=/opt/hadoop && "
-        f"export PATH=$PATH:/opt/hadoop/sbin:/opt/hadoop/bin"
-    )
-    run(f"bash -c '{env_prefix} && {HADOOP_SBIN}/start-dfs.sh'")
-    run(f"bash -c '{env_prefix} && {HADOOP_SBIN}/start-yarn.sh'")
+    java_home = get_java_home()
+    # Write a startup script to /tmp and run it — avoids quote conflicts
+    script = f"""#!/bin/bash
+export HDFS_NAMENODE_USER={MASTER_USER}
+export HDFS_DATANODE_USER={MASTER_USER}
+export HDFS_SECONDARYNAMENODE_USER={MASTER_USER}
+export YARN_RESOURCEMANAGER_USER={MASTER_USER}
+export YARN_NODEMANAGER_USER={MASTER_USER}
+export JAVA_HOME={java_home}
+export HADOOP_HOME=/opt/hadoop
+export PATH=$PATH:/opt/hadoop/sbin:/opt/hadoop/bin
+{HADOOP_SBIN}/start-dfs.sh
+{HADOOP_SBIN}/start-yarn.sh
+"""
+    script_path = "/tmp/start_hadoop.sh"
+    with open(script_path, "w") as f:
+        f.write(script)
+    import stat as st
+    os.chmod(script_path, st.S_IRWXU | st.S_IRGRP | st.S_IXGRP)
+    run(f"bash {script_path}")
     time.sleep(6)
 
 def verify():
