@@ -97,8 +97,8 @@ def install_on_master(tarball):
         run(f"sudo rm -rf {target}")
     run(f"sudo tar -xzf {tarball} -C {INSTALL_DIR}")
     run(f"sudo ln -sfn {target} /opt/hadoop")
-    run(f"sudo chown -R {os.getenv('USER', 'vboxuser')}:{os.getenv('USER', 'vboxuser')} {target}")
-    run(f"sudo chown -R {os.getenv('USER', 'vboxuser')}:{os.getenv('USER', 'vboxuser')} /opt/hadoop")
+    run(f"sudo chown -R {MASTER_USER}:{MASTER_USER} {target}")
+    run(f"sudo chown -R {MASTER_USER}:{MASTER_USER} /opt/hadoop")
     print(f"Master install done: /opt/hadoop -> {target}")
 
 def install_on_worker(w, tarball):
@@ -160,8 +160,7 @@ def configure_hadoop():
     nn.mkdir(parents=True, exist_ok=True)
     dn.mkdir(parents=True, exist_ok=True)
     replication = max(1, min(len(WORKERS) + 1, 3))
-    user = os.getenv("USER", "vboxuser")
-    run(f"sudo chown -R {user}:{user} /opt/hadoop-{HADOOP_VERSION} /opt/hadoop")
+    run(f"sudo chown -R {MASTER_USER}:{MASTER_USER} /opt/hadoop-{HADOOP_VERSION} /opt/hadoop")
     core = f"""<?xml version=\"1.0\"?>
 <configuration>
   <property><name>fs.defaultFS</name><value>hdfs://{MASTER_IP}:9000</value></property>
@@ -189,7 +188,7 @@ def configure_hadoop():
     workers_str = "\n".join([w["ip"] for w in WORKERS]) if WORKERS else "localhost"
     run(f"sudo bash -c \"echo \'{workers_str}\' > {conf}/workers\"")
     run("sudo mkdir -p /opt/hadoop/tmp && sudo chmod 777 /opt/hadoop/tmp")
-    run(f"sudo chown -R {user}:{user} /opt/hadoop-{HADOOP_VERSION} /opt/hadoop")
+    run(f"sudo chown -R {MASTER_USER}:{MASTER_USER} /opt/hadoop-{HADOOP_VERSION} /opt/hadoop")
     print("Config files written.")
 
 def setup_ssh():
