@@ -258,6 +258,17 @@ def verify():
         if p in running: print(f"  OK      {p}")
         else: print(f"  MISSING {p}"); all_ok = False
     run(f"{HADOOP_BIN}/hadoop version")
+
+    # Also verify each worker node
+    if WORKERS:
+        print("\nWorker node status:")
+        for w in WORKERS:
+            r = run_ssh(w["ip"], w["user"], "jps")
+            running = r.stdout or ""
+            dn = "OK" if "DataNode" in running else "MISSING"
+            nm = "OK" if "NodeManager" in running else "MISSING"
+            print(f"  Worker {w['ip']}: DataNode={dn} NodeManager={nm}")
+
     return all_ok
 
 def main():
